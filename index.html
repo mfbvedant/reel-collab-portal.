@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reel Collab Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg-base: #050505;
+            --bg-surface: #121212;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent: #ffffff;
+            --accent-invert: #000000;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            /* Subtle minimal mesh/gradient background */
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
+            background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .main-title {
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-container {
+            background: rgba(18, 18, 18, 0.6);
+            backdrop-filter: blur(24px) saturate(150%);
+            -webkit-backdrop-filter: blur(24px) saturate(150%);
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-hover);
+        }
+
+        /* Minimal Interactive Button */
+        .themed-button {
+            background: var(--accent);
+            color: var(--accent-invert);
+            border: 1px solid transparent;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .themed-button:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.15);
+        }
+
+        .themed-button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .themed-button:disabled {
+            cursor: not-allowed;
+            background: #333;
+            color: #666;
+        }
+
+        /* Refined Inputs */
+        .form-input,
+        .form-select,
+        .admin-editable {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            color: #fff;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .form-input:hover,
+        .form-select:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .admin-editable:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .form-select option {
+            background: var(--bg-surface);
+            color: #fff;
+        }
+
+        /* Custom Animated Checkbox */
+        .custom-checkbox-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+        }
+
+        .custom-checkbox {
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            cursor: pointer;
+        }
+
+        .checkbox-visible {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+
+        .custom-checkbox:checked~.checkbox-visible {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .checkbox-visible:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 7px;
+            top: 3px;
+            width: 5px;
+            height: 10px;
+            border: solid var(--accent-invert);
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .custom-checkbox:checked~.checkbox-visible:after {
+            display: block;
+            animation: checkmark 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes checkmark {
+            0% {
+                height: 0;
+                width: 0;
+                opacity: 0;
+            }
+
+            100% {
+                height: 10px;
+                width: 5px;
+                opacity: 1;
+            }
+        }
+
+        /* Status Indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .status-Pending .status-dot {
+            background-color: #facc15;
+            box-shadow: 0 0 8px rgba(250, 204, 21, 0.4);
+        }
+
+        .status-Selected .status-dot {
+            background-color: #34d399;
+            box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+        }
+
+        .status-Rejected .status-dot {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Animation */
+        .fade-in {
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-2 {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+                filter: blur(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .admin-tools {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .data-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .data-button:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8">
+    <div id="app" class="max-w-6xl mx-auto">
+
+        <header class="relative text-center py-12 md:py-16 fade-in">
+            <div id="adminLoginContainer" class="absolute top-4 right-0 md:top-8 md:right-4">
+                <button id="adminLoginBtn"
+                    class="text-xs font-medium text-gray-400 hover:text-white transition tracking-widest uppercase border border-transparent hover:border-white/10 px-4 py-2 rounded-full">Admin</button>
+            </div>
+            <h1 class="text-5xl md:text-7xl main-title mb-4">Reel Collab</h1>
+            <p class="text-base md:text-lg text-gray-400 max-w-md mx-auto">Submit your finest work. Get evaluated. Let's
+                create something extraordinary together.</p>
+        </header>
+
+        <main id="mainContent">
+            <div id="userView">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+
+                    <div class="lg:col-span-7 glass-container hover-lift p-6 md:p-10 rounded-3xl fade-in delay-1">
+                        <div class="flex items-center gap-3 mb-8">
+                            <div class="w-2 h-8 bg-white rounded-full"></div>
+                            <h2 class="text-2xl md:text-3xl font-semibold text-white tracking-tight">Submit Details</h2>
+                        </div>
+
+                        <form id="submissionForm" class="space-y-6">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="group">
+                                    <label
+                                        class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">Full
+                                        Name</label>
+                                    <input type="text" id="fullName" placeholder="John Doe"
+                                        class="w-full p-4 rounded-2xl form-input" required>
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">Contact
+                                        Number</label>
+                                    <input type="tel" id="contactNumber" placeholder="+1 234 567 8900"
+                                        class="w-full p-4 rounded-2xl form-input" required>
+                                </div>
+                            </div>
+
+                            <div class="group">
+                                <label
+                                    class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">Email
+                                    Address</label>
+                                <input type="email" id="email" placeholder="john@example.com"
+                                    class="w-full p-4 rounded-2xl form-input" required>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 border-t border-white/5 pt-6 mt-6">
+                                <div class="md:col-span-3 group">
+                                    <label
+                                        class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">College
+                                        / University</label>
+                                    <input type="text" id="collegeName" placeholder="Your Institution Name"
+                                        class="w-full p-4 rounded-2xl form-input" required>
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">Class
+                                        / Year</label>
+                                    <input type="text" id="className" placeholder="e.g. TE"
+                                        class="w-full p-4 rounded-2xl form-input" required>
+                                </div>
+                                <div class="md:col-span-2 group">
+                                    <label
+                                        class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide group-focus-within:text-white transition">Branch
+                                        / Dept</label>
+                                    <input type="text" id="branch" placeholder="e.g. Computer Science"
+                                        class="w-full p-4 rounded-2xl form-input" required>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-white/5 pt-6 mt-6 space-y-4">
+                                <label
+                                    class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Instagram
+                                    Handles <span class="text-gray-600 normal-case">(Min 1, Max 3)</span></label>
+                                <input type="text" id="insta1" placeholder="@primary_handle"
+                                    class="w-full p-4 rounded-2xl form-input" required>
+                                <input type="text" id="insta2" placeholder="@secondary_handle (Optional)"
+                                    class="w-full p-4 rounded-2xl form-input">
+                                <input type="text" id="insta3" placeholder="@third_handle (Optional)"
+                                    class="w-full p-4 rounded-2xl form-input">
+                            </div>
+
+                            <div
+                                class="bg-white/5 border border-white/10 p-5 rounded-2xl mt-8 flex items-start gap-4 hover:bg-white-[0.07] transition">
+                                <div class="custom-checkbox-wrapper mt-1 shrink-0">
+                                    <input type="checkbox" id="agreement" class="custom-checkbox" required>
+                                    <span class="checkbox-visible"></span>
+                                </div>
+                                <label for="agreement"
+                                    class="text-sm text-gray-400 cursor-pointer leading-relaxed select-none">
+                                    <strong class="text-white font-medium">Collaboration Terms:</strong> I agree to send
+                                    the reel draft for review. If selected, I will accept the collaboration request.
+                                    Failure to collaborate after selection may result in restricted participation in
+                                    future events.
+                                </label>
+                            </div>
+
+                            <button type="submit"
+                                class="w-full p-4 font-semibold rounded-2xl themed-button text-base mt-6 flex justify-center items-center gap-2">
+                                <span id="submit-text">Submit Application</span>
+                                <svg id="submit-spinner" class="hidden animate-spin h-5 w-5 text-black"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                            </button>
+                            <p id="submitError" class="text-red-400 text-sm text-center pt-2 hidden"></p>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-5 space-y-6">
+                        <div id="trackerContainer" class="glass-container hover-lift p-8 rounded-3xl fade-in delay-2">
+                            <h2 class="text-xl font-semibold mb-2 text-white">Track Status</h2>
+                            <p class="text-sm text-gray-400 mb-6 leading-relaxed">Enter your secure token to check your
+                                application's evaluation status.</p>
+                            <form id="trackForm" class="space-y-4">
+                                <input type="text" id="tokenInput" placeholder="Paste Token Here"
+                                    class="w-full p-4 rounded-2xl form-input font-mono text-sm" required>
+                                <button type="submit"
+                                    class="w-full p-4 font-medium rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all border border-white/5 hover:border-white/20 active:scale-95">Check
+                                    Status</button>
+                            </form>
+                            <div id="trackingResult" class="mt-6 hidden"></div>
+                        </div>
+
+                        <div class="glass-container hover-lift p-8 rounded-3xl fade-in delay-2">
+                            <h3 class="font-medium text-white mb-4 flex items-center gap-2">
+                                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Next Steps
+                            </h3>
+                            <div
+                                class="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
+                                <div
+                                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                    <div
+                                        class="flex items-center justify-center w-5 h-5 rounded-full border border-white/30 bg-black text-gray-500 group-[.is-active]:text-white group-[.is-active]:border-white group-[.is-active]:bg-white/10 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm transition">
+                                        <span class="text-[10px] font-bold">1</span>
+                                    </div>
+                                    <div
+                                        class="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] text-sm text-gray-400 group-[.is-active]:text-gray-300">
+                                        Submit form & copy token.</div>
+                                </div>
+                                <div
+                                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                    <div
+                                        class="flex items-center justify-center w-5 h-5 rounded-full border border-white/30 bg-black text-gray-500 group-[.is-active]:text-white group-[.is-active]:border-white group-[.is-active]:bg-white/10 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm transition">
+                                        <span class="text-[10px] font-bold">2</span>
+                                    </div>
+                                    <div
+                                        class="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] text-sm text-gray-400 group-[.is-active]:text-gray-300">
+                                        DM us your Reel draft.</div>
+                                </div>
+                                <div
+                                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                    <div
+                                        class="flex items-center justify-center w-5 h-5 rounded-full border border-white/30 bg-black text-gray-500 group-[.is-active]:text-white group-[.is-active]:border-white group-[.is-active]:bg-white/10 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm transition">
+                                        <span class="text-[10px] font-bold">3</span>
+                                    </div>
+                                    <div
+                                        class="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] text-sm text-gray-400 group-[.is-active]:text-gray-300">
+                                        Wait for selection status.</div>
+                                </div>
+                                <div
+                                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                    <div
+                                        class="flex items-center justify-center w-5 h-5 rounded-full border border-white/30 bg-black text-gray-500 group-[.is-active]:text-white group-[.is-active]:border-white group-[.is-active]:bg-white/10 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm transition">
+                                        <span class="text-[10px] font-bold">4</span>
+                                    </div>
+                                    <div
+                                        class="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] text-sm text-gray-400 group-[.is-active]:text-gray-300">
+                                        Accept IG Collab invite!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="adminLoginView" class="hidden">
+                <div class="max-w-sm mx-auto glass-container hover-lift p-10 rounded-3xl fade-in mt-20">
+                    <div
+                        class="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-semibold mb-8 text-center text-white tracking-tight">Admin Portal</h2>
+                    <form id="adminLoginForm" class="space-y-6">
+                        <input type="password" id="adminPassword" placeholder="Access Code"
+                            class="w-full p-4 rounded-2xl form-input text-center tracking-widest font-mono text-sm"
+                            required>
+                        <button type="submit"
+                            class="w-full p-4 font-medium rounded-2xl themed-button">Authenticate</button>
+                        <p id="adminError" class="text-red-400 text-sm text-center hidden">Access Denied.</p>
+                    </form>
+                    <button id="backToHomeBtn" class="w-full mt-4 text-xs text-gray-500 hover:text-white transition">←
+                        Back to Site</button>
+                </div>
+            </div>
+
+            <div id="adminPanelView" class="hidden">
+                <div class="glass-container p-6 md:p-10 rounded-3xl fade-in min-h-[80vh]">
+                    <div
+                        class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-white/10 pb-6">
+                        <div>
+                            <h2 class="text-3xl font-semibold text-white tracking-tight mb-1">Submissions</h2>
+                            <p class="text-sm text-gray-400">Manage and evaluate reel applications.</p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <button id="refreshBtn"
+                                class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition active:scale-95"
+                                title="Refresh">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd"
+                                        d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+                                    <path
+                                        d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+                                </svg>
+                            </button>
+                            <button id="logoutBtn"
+                                class="p-3 px-6 font-medium rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition text-sm border border-red-500/20 active:scale-95">Sign
+                                Out</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-tools mb-8 flex items-center justify-between">
+                        <div class="flex gap-3">
+                            <button id="exportBtn" class="data-button text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Export JSON
+                            </button>
+                            <div class="relative">
+                                <input type="file" id="importFile" accept=".json" class="hidden">
+                                <button id="importBtn" class="data-button text-xs font-medium">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                    </svg>
+                                    Import Data
+                                </button>
+                            </div>
+                        </div>
+                        <div id="importStatus" class="text-xs font-medium hidden"></div>
+                    </div>
+
+                    <div id="submissionList" class="space-y-4 pr-2">
+                        <div class="flex flex-col items-center justify-center py-20 text-gray-500">
+                            <svg class="animate-spin h-8 w-8 mb-4 opacity-50" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <p>Loading submissions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="thankYouView"
+            class="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center hidden z-50 p-4 transition-all duration-500">
+            <div
+                class="glass-container p-10 md:p-14 rounded-[2.5rem] text-center max-w-lg w-full fade-in transform scale-100">
+                <div
+                    class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+                    <svg class="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-3xl font-bold text-white mb-3 tracking-tight">Application Received</h3>
+                <p class="text-gray-400 mb-8 text-sm leading-relaxed">Your details have been securely saved. Please copy
+                    your tracking token below.</p>
+
+                <div class="bg-black/50 border border-white/10 p-6 rounded-3xl mb-8 relative overflow-hidden group">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]">
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest font-medium">Tracking Token</p>
+                    <div class="flex flex-col items-center gap-4">
+                        <span id="tokenDisplayThankYou"
+                            class="font-mono text-xl md:text-2xl text-white font-bold tracking-wider break-all select-all"></span>
+                        <button id="copyTokenBtnThankYou"
+                            class="bg-white text-black hover:bg-gray-200 px-6 py-2 rounded-full text-xs font-semibold transition-transform active:scale-95 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            Copy Token
+                        </button>
+                    </div>
+                    <p id="copy-success-thank-you"
+                        class="text-green-400 text-xs mt-3 hidden absolute bottom-2 left-1/2 -translate-x-1/2">Copied to
+                        clipboard!</p>
+                </div>
+
+                <button id="goBackBtn"
+                    class="text-sm font-medium text-gray-400 hover:text-white transition pb-1 border-b border-transparent hover:border-white/30">Return
+                    to Homepage</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Make db global so all functions can access it
+        let db;
+        let submissionsCollection;
+        const ADMIN_PASS = "admin123";
+
+        function main() {
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyCHkGv6JWjgNq_V0Bs-AGtaGMwTAOvjCU0",
+                authDomain: "complain-c7bfb.firebaseapp.com",
+                projectId: "complain-c7bfb",
+                storageBucket: "complain-c7bfb.firebasestorage.app",
+                messagingSenderId: "269132567387",
+                appId: "1:269132567387:web:c76748a713e8d79658c07e",
+                measurementId: "G-6863CC7ZT5"
+            };
+
+            // Initialize Firebase
+            function initializeFirebase() {
+                try {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    submissionsCollection = db.collection('reel_submissions');
+                    return true;
+                } catch (error) {
+                    console.error("Error initializing Firebase:", error);
+                    alert("Database connection failed. Please check console.");
+                    return false;
+                }
+            }
+
+            if (!initializeFirebase()) return;
+
+            // DOM Elements
+            const userView = document.getElementById('userView');
+            const adminLoginView = document.getElementById('adminLoginView');
+            const adminPanelView = document.getElementById('adminPanelView');
+            const adminLoginBtn = document.getElementById('adminLoginBtn');
+            const adminLoginContainer = document.getElementById('adminLoginContainer');
+            const thankYouView = document.getElementById('thankYouView');
+            const backToHomeBtn = document.getElementById('backToHomeBtn');
+
+            const exportBtn = document.getElementById('exportBtn');
+            const importBtn = document.getElementById('importBtn');
+            const importFile = document.getElementById('importFile');
+            const importStatus = document.getElementById('importStatus');
+
+            // View toggler with smooth fade (Updated to handle ThankYouView)
+            const showView = (view) => {
+                // Ensure ALL screens, including the Thank You modal, are hidden first
+                [userView, adminLoginView, adminPanelView, thankYouView].forEach(v => {
+                    if (v !== view) v.classList.add('hidden');
+                });
+                view.classList.remove('hidden');
+
+                view.classList.remove('fade-in');
+                void view.offsetWidth; // trigger reflow
+                view.classList.add('fade-in');
+
+                adminLoginContainer.style.display = (view === userView) ? 'block' : 'none';
+            };
+
+            // Navigation Listeners
+            adminLoginBtn.addEventListener('click', () => showView(adminLoginView));
+            backToHomeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showView(userView);
+            });
+
+            // Admin Login
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            const adminPasswordInput = document.getElementById('adminPassword');
+            const adminError = document.getElementById('adminError');
+
+            adminLoginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (adminPasswordInput.value === ADMIN_PASS) {
+                    adminError.classList.add('hidden');
+                    adminPasswordInput.value = '';
+                    showView(adminPanelView);
+                    loadSubmissions();
+                } else {
+                    adminError.classList.remove('hidden');
+                    adminPasswordInput.classList.add('translate-x-1');
+                    setTimeout(() => adminPasswordInput.classList.remove('translate-x-1'), 100);
+                }
+            });
+
+            // Logout & Refresh
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                showView(userView);
+                document.getElementById('submissionList').innerHTML = '<div class="flex justify-center py-10"><p class="text-gray-500">Loading...</p></div>';
+            });
+
+            document.getElementById('refreshBtn').addEventListener('click', () => {
+                document.getElementById('submissionList').innerHTML = '<div class="flex justify-center py-10"><p class="text-gray-500">Refreshing...</p></div>';
+                loadSubmissions();
+            });
+
+            // ==========================================
+            // EXPORT & IMPORT LOGIC (FIXED)
+            // ==========================================
+
+            exportBtn.addEventListener('click', async () => {
+                const originalContent = exportBtn.innerHTML;
+                exportBtn.textContent = "Exporting...";
+
+                try {
+                    const querySnapshot = await submissionsCollection.orderBy('timestamp', 'desc').get();
+                    const data = [];
+
+                    querySnapshot.forEach(doc => {
+                        const docData = doc.data();
+
+                        // Clean up firebase timestamps so the JSON imports cleanly later
+                        if (docData.timestamp && docData.timestamp.toDate) {
+                            docData.timestamp = docData.timestamp.toDate().toISOString();
+                        }
+
+                        data.push({ id: doc.id, ...docData });
+                    });
+
+                    const dataStr = JSON.stringify(data, null, 2);
+
+                    // Use a Blob to safely export massive files without crashing the browser
+                    const blob = new Blob([dataStr], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `reel-submissions-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+
+                    // Clean up URL object after download
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                } catch (error) {
+                    console.error("Export error:", error);
+                    alert("Failed to export data. Check the console for details.");
+                } finally {
+                    exportBtn.innerHTML = originalContent;
+                }
+            });
+
+            importBtn.addEventListener('click', () => importFile.click());
+
+            importFile.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    importStatus.textContent = "Importing...";
+                    importStatus.className = 'text-yellow-400 text-xs ml-4';
+                    importStatus.classList.remove('hidden');
+
+                    const fileText = await file.text();
+                    const subs = JSON.parse(fileText);
+
+                    // Add each record back to the database
+                    for (const sub of subs) {
+                        const { id, ...data } = sub;
+                        await submissionsCollection.add(data);
+                    }
+
+                    importStatus.textContent = `Imported ${subs.length} items.`;
+                    importStatus.className = 'text-green-400 text-xs ml-4';
+                    loadSubmissions(); // Refresh the list automatically
+                } catch (error) {
+                    console.error("Import error:", error);
+                    importStatus.textContent = "Failed to import.";
+                    importStatus.className = 'text-red-400 text-xs ml-4';
+                }
+                importFile.value = ''; // Reset file input
+                setTimeout(() => importStatus.classList.add('hidden'), 3000);
+            });
+
+
+            // Load Submissions in Admin Panel
+            function loadSubmissions() {
+                if (!submissionsCollection) return;
+
+                submissionsCollection.orderBy('timestamp', 'desc').get()
+                    .then((querySnapshot) => {
+                        const list = document.getElementById('submissionList');
+                        if (querySnapshot.empty) {
+                            list.innerHTML = '<div class="text-center py-16 bg-white/5 rounded-3xl border border-white/10"><p class="text-gray-400">No submissions yet.</p></div>';
+                            return;
+                        }
+
+                        const items = [];
+                        querySnapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+
+                        list.innerHTML = items.map(c => {
+                            const statusClass = c.status ? `status-${c.status.replace(' ', '')}` : 'status-Pending';
+
+                            // Handle formatting whether the timestamp came from Firebase or an imported JSON string
+                            let timeStr = 'N/A';
+                            if (c.timestamp) {
+                                if (c.timestamp.seconds) {
+                                    timeStr = new Date(c.timestamp.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                } else {
+                                    timeStr = new Date(c.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                }
+                            }
+
+                            return `
+                        <div class="bg-[#121212] border border-white/5 p-6 rounded-3xl ${statusClass} relative hover:border-white/10 transition group">
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                
+                                <div class="lg:col-span-4">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="status-dot"></div>
+                                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Creator Profile</p>
+                                    </div>
+                                    <input type="text" value="${c.fullName || ''}" class="admin-editable admin-name w-full p-2 bg-transparent rounded-lg font-semibold text-white text-lg mb-1 border-transparent hover:bg-white/5 focus:bg-white/5 focus:border-white/20 transition outline-none" title="Full Name">
+                                    <input type="text" value="${c.contactNumber || ''}" class="admin-editable admin-phone w-full p-2 bg-transparent rounded-lg text-sm text-gray-400 mb-1 border-transparent hover:bg-white/5 focus:bg-white/5 focus:border-white/20 transition outline-none" title="Contact">
+                                    <input type="text" value="${c.email || ''}" class="admin-editable admin-email w-full p-2 bg-transparent rounded-lg text-sm text-gray-400 border-transparent hover:bg-white/5 focus:bg-white/5 focus:border-white/20 transition outline-none" title="Email">
+                                </div>
+                                
+                                <div class="lg:col-span-4 lg:border-l border-white/5 lg:pl-6">
+                                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3 mt-1">Academic Info</p>
+                                    <div class="space-y-2">
+                                        <p class="text-sm text-gray-300 flex items-start gap-2">
+                                            <span class="opacity-50 mt-0.5">🎓</span>
+                                            <span>${c.collegeName || 'N/A'}</span>
+                                        </p>
+                                        <p class="text-sm text-gray-300 flex items-start gap-2">
+                                            <span class="opacity-50 mt-0.5">📚</span>
+                                            <span>${c.className || ''} - ${c.branch || ''}</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="lg:col-span-4 lg:border-l border-white/5 lg:pl-6">
+                                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3 mt-1">Actions & IG</p>
+                                    <div class="space-y-3">
+                                        <p class="text-sm text-blue-400 truncate">${[c.insta1, c.insta2, c.insta3].filter(Boolean).join(', ')}</p>
+                                        <div class="flex items-center gap-2">
+                                            <select class="status-select p-2 rounded-lg form-select text-sm flex-1 cursor-pointer">
+                                                <option value="Pending" ${c.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                                <option value="Selected" ${c.status === 'Selected' ? 'selected' : ''}>Selected</option>
+                                                <option value="Rejected" ${c.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                                            </select>
+                                            <button data-id="${c.id}" class="save-btn p-2 px-4 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition">Save</button>
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-2 font-mono">Token: ${c.token || 'N/A'} • ${timeStr}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                        }).join('');
+                    }).catch(error => {
+                        console.error("Error fetching submissions: ", error);
+                    });
+            }
+
+            // Admin Save Button Delegation
+            document.getElementById('submissionList').addEventListener('click', async (e) => {
+                if (e.target.classList.contains('save-btn')) {
+                    const btn = e.target;
+                    const id = btn.dataset.id;
+                    const card = btn.closest('.group');
+                    const newStatus = card.querySelector('.status-select').value;
+
+                    btn.textContent = 'Saving...';
+                    try {
+                        await submissionsCollection.doc(id).update({ status: newStatus });
+                        btn.textContent = 'Saved!';
+                        card.classList.remove('status-Pending', 'status-Selected', 'status-Rejected');
+                        card.classList.add(`status-${newStatus}`);
+                        setTimeout(() => btn.textContent = 'Save', 2000);
+                    } catch (err) {
+                        console.error("Error updating:", err);
+                        btn.textContent = 'Error';
+                        setTimeout(() => btn.textContent = 'Save', 2000);
+                    }
+                }
+            });
+
+            // Form Submission Logic
+            const submissionForm = document.getElementById('submissionForm');
+            submissionForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                document.getElementById('submit-text').classList.add('hidden');
+                document.getElementById('submit-spinner').classList.remove('hidden');
+
+                const token = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+                const data = {
+                    fullName: document.getElementById('fullName').value,
+                    contactNumber: document.getElementById('contactNumber').value,
+                    email: document.getElementById('email').value,
+                    collegeName: document.getElementById('collegeName').value,
+                    className: document.getElementById('className').value,
+                    branch: document.getElementById('branch').value,
+                    insta1: document.getElementById('insta1').value,
+                    insta2: document.getElementById('insta2').value,
+                    insta3: document.getElementById('insta3').value,
+                    status: 'Pending',
+                    token: token,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                try {
+                    await submissionsCollection.add(data);
+                    document.getElementById('tokenDisplayThankYou').textContent = token;
+                    showView(thankYouView);
+                    submissionForm.reset();
+                } catch (err) {
+                    console.error("Submission failed:", err);
+                    document.getElementById('submitError').textContent = "Failed to submit. Please try again.";
+                    document.getElementById('submitError').classList.remove('hidden');
+                } finally {
+                    document.getElementById('submit-text').classList.remove('hidden');
+                    document.getElementById('submit-spinner').classList.add('hidden');
+                }
+            });
+
+            // Tracking Form Logic
+            document.getElementById('trackForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const tokenInput = document.getElementById('tokenInput').value.trim();
+                const resultDiv = document.getElementById('trackingResult');
+
+                resultDiv.classList.remove('hidden');
+                resultDiv.innerHTML = '<span class="text-gray-400 text-sm">Searching...</span>';
+
+                try {
+                    const snapshot = await submissionsCollection.where('token', '==', tokenInput).get();
+                    if (snapshot.empty) {
+                        resultDiv.innerHTML = '<span class="text-red-400 text-sm">Token not found. Check and try again.</span>';
+                    } else {
+                        const status = snapshot.docs[0].data().status;
+                        const colors = { 'Pending': 'text-yellow-400', 'Selected': 'text-green-400', 'Rejected': 'text-red-400' };
+                        const color = colors[status] || 'text-yellow-400';
+                        resultDiv.innerHTML = `<span class="text-sm text-gray-300">Status: <strong class="${color} uppercase tracking-widest">${status}</strong></span>`;
+                    }
+                } catch (err) {
+                    resultDiv.innerHTML = '<span class="text-red-400 text-sm">Error fetching status.</span>';
+                }
+            });
+
+            // Improved Copy Button Logic
+            document.getElementById('copyTokenBtnThankYou').addEventListener('click', () => {
+                const tokenText = document.getElementById('tokenDisplayThankYou').textContent;
+
+                const showSuccess = () => {
+                    document.getElementById('copy-success-thank-you').classList.remove('hidden');
+                    setTimeout(() => document.getElementById('copy-success-thank-you').classList.add('hidden'), 2000);
+                };
+
+                const fallbackCopy = (text) => {
+                    try {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = typeof text === 'string' ? text : tokenText;
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-999999px";
+                        textArea.style.top = "-999999px";
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        textArea.remove();
+                        showSuccess();
+                    } catch (err) {
+                        console.error('Fallback copy failed', err);
+                        alert("Could not copy token automatically. Please highlight and copy it manually.");
+                    }
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(tokenText).then(showSuccess).catch(fallbackCopy);
+                } else {
+                    fallbackCopy(tokenText);
+                }
+            });
+
+            // "Return to Homepage" button logic
+            document.getElementById('goBackBtn').addEventListener('click', () => {
+                showView(userView);
+            });
+        }
+
+        // Call main() to execute all logic!
+        main();
+    </script>
+</body>
+
+</html>
