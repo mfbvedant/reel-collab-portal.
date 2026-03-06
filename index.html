@@ -468,7 +468,7 @@
                 <h3 class="text-3xl font-bold text-white mb-3 tracking-tight">Application Received</h3>
                 <p class="text-gray-400 mb-8 text-sm leading-relaxed">Your details have been securely saved. Please copy your tracking token below.</p>
 
-                <div class="bg-black/50 border border-white/10 p-6 rounded-3xl mb-6 relative overflow-hidden group">
+                <div class="bg-black/50 border border-white/10 p-6 rounded-3xl mb-4 relative overflow-hidden group">
                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
                     <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest font-medium">Tracking Token</p>
                     <div class="flex flex-col items-center gap-4">
@@ -481,6 +481,14 @@
                         </button>
                     </div>
                     <p id="copy-success-thank-you" class="text-green-400 text-xs mt-3 hidden absolute bottom-2 left-1/2 -translate-x-1/2">Copied to clipboard!</p>
+                </div>
+
+                <div class="bg-amber-400/10 border border-amber-400/20 text-amber-400/90 p-4 rounded-2xl mb-6 text-sm text-left leading-relaxed shadow-[0_0_15px_rgba(251,191,36,0.05)]">
+                    <strong class="block text-amber-400 mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        Important
+                    </strong>
+                    This token number is also your <strong>referral code</strong>. The students who watch your reel must fill this in for you to be eligible for the reward!
                 </div>
 
                 <a href="https://chat.whatsapp.com/JR1QbzZkOL0D9ddkGRfdDW" target="_blank" rel="noopener noreferrer" 
@@ -544,16 +552,15 @@
             const importFile = document.getElementById('importFile');
             const importStatus = document.getElementById('importStatus');
 
-            // View toggler with smooth fade (Updated to handle ThankYouView)
+            // View toggler with smooth fade
             const showView = (view) => {
-                // Ensure ALL screens, including the Thank You modal, are hidden first
                 [userView, adminLoginView, adminPanelView, thankYouView].forEach(v => {
                     if (v !== view) v.classList.add('hidden');
                 });
                 view.classList.remove('hidden');
 
                 view.classList.remove('fade-in');
-                void view.offsetWidth; // trigger reflow
+                void view.offsetWidth; 
                 view.classList.add('fade-in');
 
                 adminLoginContainer.style.display = (view === userView) ? 'block' : 'none';
@@ -596,10 +603,7 @@
                 loadSubmissions();
             });
 
-            // ==========================================
-            // EXPORT & IMPORT LOGIC (FIXED)
-            // ==========================================
-
+            // EXPORT LOGIC
             exportBtn.addEventListener('click', async () => {
                 const originalContent = exportBtn.innerHTML;
                 exportBtn.textContent = "Exporting...";
@@ -611,7 +615,6 @@
                     querySnapshot.forEach(doc => {
                         const docData = doc.data();
 
-                        // Clean up firebase timestamps so the JSON imports cleanly later
                         if (docData.timestamp && docData.timestamp.toDate) {
                             docData.timestamp = docData.timestamp.toDate().toISOString();
                         }
@@ -620,8 +623,6 @@
                     });
 
                     const dataStr = JSON.stringify(data, null, 2);
-
-                    // Use a Blob to safely export massive files without crashing the browser
                     const blob = new Blob([dataStr], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
 
@@ -631,18 +632,18 @@
                     document.body.appendChild(link);
                     link.click();
 
-                    // Clean up URL object after download
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
 
                 } catch (error) {
                     console.error("Export error:", error);
-                    alert("Failed to export data. Check the console for details.");
+                    alert("Failed to export data.");
                 } finally {
                     exportBtn.innerHTML = originalContent;
                 }
             });
 
+            // IMPORT LOGIC
             importBtn.addEventListener('click', () => importFile.click());
 
             importFile.addEventListener('change', async (e) => {
@@ -656,7 +657,6 @@
                     const fileText = await file.text();
                     const subs = JSON.parse(fileText);
 
-                    // Add each record back to the database
                     for (const sub of subs) {
                         const { id, ...data } = sub;
                         await submissionsCollection.add(data);
@@ -664,16 +664,15 @@
 
                     importStatus.textContent = `Imported ${subs.length} items.`;
                     importStatus.className = 'text-green-400 text-xs ml-4';
-                    loadSubmissions(); // Refresh the list automatically
+                    loadSubmissions(); 
                 } catch (error) {
                     console.error("Import error:", error);
                     importStatus.textContent = "Failed to import.";
                     importStatus.className = 'text-red-400 text-xs ml-4';
                 }
-                importFile.value = ''; // Reset file input
+                importFile.value = ''; 
                 setTimeout(() => importStatus.classList.add('hidden'), 3000);
             });
-
 
             // Load Submissions in Admin Panel
             function loadSubmissions() {
@@ -693,7 +692,6 @@
                         list.innerHTML = items.map(c => {
                             const statusClass = c.status ? `status-${c.status.replace(' ', '')}` : 'status-Pending';
 
-                            // Handle formatting whether the timestamp came from Firebase or an imported JSON string
                             let timeStr = 'N/A';
                             if (c.timestamp) {
                                 if (c.timestamp.seconds) {
